@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #000000;
+    color: #ffffff;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+@theme {
+  --color-slate-cyber-900: #090611;
+  --color-slate-cyber-950: #000000;
+  --color-slate-cyber-800: #120924;
+  --color-slate-cyber-700: #1d0f3a;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Custom interactive glowing button effect */
+.glow-on-hover {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glow-on-hover::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.glow-on-hover:hover::after {
+  opacity: 1;
+}
+
+.glow-on-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.4);
+  border-color: rgba(192, 132, 252, 0.5);
+}
+
+/* Scrollbar customizations for Cosmic theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1d0f3a;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a855f7;
+}

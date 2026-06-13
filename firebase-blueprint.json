@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "Campaign": {
+      "title": "Campaign",
+      "description": "An email dispatch campaign containing certificate configurations and template bodies",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "sending", "completed", "failed"] },
+        "isCertificateEnabled": { "type": "boolean" },
+        "certCoords": { "type": "object" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "totalCount": { "type": "number" },
+        "sentCount": { "type": "number" },
+        "failedCount": { "type": "number" }
+      },
+      "required": ["name", "subject", "body", "status", "isCertificateEnabled", "createdBy", "createdAt"]
+    },
+    "Recipient": {
+      "title": "Recipient",
+      "description": "A single participant within an email campaign",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "sent", "failed"] },
+        "error": { "type": "string" },
+        "sentAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "status"]
+    }
+  },
+  "firestore": {
+    "campaigns/{campaignId}": {
+      "schema": "Campaign",
+      "description": "Campaign documents created by event organizers"
+    },
+    "campaigns/{campaignId}/recipients/{recipientId}": {
+      "schema": "Recipient",
+      "description": "Recipient subcollection for detailed logging and tracking"
+    }
+  }
+}

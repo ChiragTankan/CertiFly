@@ -1,0 +1,6 @@
+{
+  "name": "CertiFly",
+  "description": "CertiFly - Send bulk customized emails and auto-generated certificates to event participants.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
