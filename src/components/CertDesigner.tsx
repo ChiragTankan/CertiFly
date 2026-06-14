@@ -5,15 +5,42 @@ interface CertCoords {
   x: number;
   y: number;
   fontSize: number;
-  fontColor: "black" | "white";
+  fontColor: string;
 }
 
 interface CertDesignerProps {
   onCoordsChanged: (coords: CertCoords, imageBase64: string | null) => void;
   isEnabled: boolean;
+  sampleName?: string;
 }
 
-export default function CertDesigner({ onCoordsChanged, isEnabled }: CertDesignerProps) {
+const COLOR_MAP: Record<string, string> = {
+  black: "#000000",
+  white: "#ffffff",
+  red: "#ef4444",
+  blue: "#3b82f6",
+  gold: "#eab308",
+  green: "#22c55e",
+  purple: "#a855f7",
+  pink: "#ec4899",
+  orange: "#f97316",
+  teal: "#14b8a6",
+};
+
+const AVAILABLE_COLORS = [
+  { id: "black", name: "Deep Black", dot: "bg-black border border-white/20" },
+  { id: "white", name: "Snow White", dot: "bg-white border border-black/20" },
+  { id: "red", name: "Crimson Red", dot: "bg-red-500" },
+  { id: "blue", name: "Ocean Blue", dot: "bg-blue-500" },
+  { id: "gold", name: "Luxury Gold", dot: "bg-yellow-500" },
+  { id: "green", name: "Emerald Green", dot: "bg-emerald-500" },
+  { id: "purple", name: "Amethyst Purple", dot: "bg-purple-500" },
+  { id: "pink", name: "Hot Pink", dot: "bg-pink-500" },
+  { id: "orange", name: "Sunset Orange", dot: "bg-orange-500" },
+  { id: "teal", name: "Teal Green", dot: "bg-teal-500" },
+];
+
+export default function CertDesigner({ onCoordsChanged, isEnabled, sampleName }: CertDesignerProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [intrinsicSize, setIntrinsicSize] = useState<{ width: number; height: number }>({ width: 1000, height: 700 });
@@ -199,13 +226,15 @@ export default function CertDesigner({ onCoordsChanged, isEnabled }: CertDesigne
                 <div
                   style={{
                     fontSize: `${Math.max(10, Math.min(24, (coords.fontSize / intrinsicSize.width) * displaySize.width * 1.5))}px`,
-                    color: coords.fontColor === "black" ? "#000000" : "#ffffff",
-                    textShadow: coords.fontColor === "black" ? "0 0 2px rgba(255,255,255,0.7)" : "0 0 2.5px rgba(0,0,0,0.85)",
+                    color: COLOR_MAP[coords.fontColor] || "#000000",
+                    textShadow: (coords.fontColor === "black" || coords.fontColor === "blue" || coords.fontColor === "purple")
+                      ? "0 0 2px rgba(255,255,255,0.85)"
+                      : "0 0 2.5px rgba(0,0,0,0.85)",
                   }}
                   className="font-bold px-1 py-0.5 rounded-sm flex items-center gap-1.5 whitespace-nowrap"
                 >
                   <Type className="w-4 h-4 inline shrink-0" />
-                  [ Participant Name Placeholder ]
+                  {sampleName || "John Doe (Sample Name)"}
                 </div>
                 <div className="w-2.5 h-2.5 rounded-full bg-purple-500 border border-black shadow-md mt-1 animate-ping"></div>
               </div>
@@ -283,29 +312,22 @@ export default function CertDesigner({ onCoordsChanged, isEnabled }: CertDesigne
             {/* Font Color */}
             <div className="space-y-1.5">
               <span className="text-xs font-bold text-white/80">Text Color</span>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <button
-                  type="button"
-                  onClick={() => handleControlChange("fontColor", "black")}
-                  className={`py-1.5 px-3 rounded-lg border text-xs font-bold font-sans transition-all duration-200 cursor-pointer ${
-                    coords.fontColor === "black"
-                      ? "bg-purple-950/40 text-white border-purple-500 font-extrabold shadow-md ring-1 ring-purple-500"
-                      : "bg-black text-white/50 border-purple-955 hover:bg-zinc-900 hover:text-white"
-                  }`}
-                >
-                  Deep Black
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleControlChange("fontColor", "white")}
-                  className={`py-1.5 px-3 rounded-lg border text-xs font-bold font-sans transition-all duration-205 cursor-pointer ${
-                    coords.fontColor === "white"
-                      ? "bg-purple-950/40 text-white border-purple-500 font-extrabold shadow-md ring-1 ring-purple-500"
-                      : "bg-black text-white/50 border-purple-955 hover:bg-zinc-900 hover:text-white"
-                  }`}
-                >
-                  Snow White
-                </button>
+              <div className="grid grid-cols-2 gap-1.5 mt-1 max-h-[160px] overflow-y-auto pr-1">
+                {AVAILABLE_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleControlChange("fontColor", c.id)}
+                    className={`py-1.5 px-2 rounded-lg border text-xs font-bold font-sans flex items-center gap-2 transition-all duration-200 cursor-pointer ${
+                      coords.fontColor === c.id
+                        ? "bg-purple-950/40 text-white border-purple-400 font-extrabold shadow-md ring-1 ring-purple-400"
+                        : "bg-black text-white/60 border-zinc-800 hover:bg-zinc-900 hover:text-white hover:border-zinc-700"
+                    }`}
+                  >
+                    <span className={`w-3 h-3 rounded-full shrink-0 ${c.dot}`} />
+                    <span className="truncate">{c.name}</span>
+                  </button>
+                ))}
               </div>
             </div>
 

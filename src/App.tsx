@@ -293,152 +293,162 @@ export default function App() {
       return;
     }
 
-    // 3. Dispatch data array to Server API via Chunked/SSE Streaming
+    // 3. Dispatch data array to Server API via high-compatibility individual REST queue
     try {
-      const response = await fetch("/api/send-campaign", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      setDispatchLogs((prev) => [
+        {
+          id: `sys_init_${Date.now()}`,
+          name: "System Worker",
+          email: "",
+          status: "system",
+          info: "Establishing campaign queue and loading configurations...",
         },
-        body: JSON.stringify({
-          subject: emailSubject,
-          body: emailBody,
-          isCertificateEnabled: isCertEnabled,
-          certificateImageUrl: certBase64,
-          certCoords,
-          recipients: participants,
-          smtpConfig: {
-            host: smtpConfig?.host || "",
-            port: smtpConfig?.port || 587,
-            secure: smtpConfig?.secure || false,
-            user: smtpConfig?.user || "",
-            pass: smtpConfig?.pass || "",
-            fromName: smtpFromName,
-            fromEmail: smtpFromEmail
-          },
-        }),
-      });
-
-      if (!response.body) {
-        throw new Error("Server streamed interface was unreachable.");
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let finished = false;
-      let leftOverText = "";
+        ...prev,
+      ]);
 
       let currentSent = 0;
       let currentFailed = 0;
 
-      while (!finished) {
-        const { value, done } = await reader.read();
-        finished = done;
-        if (value) {
-          const chunk = decoder.decode(value);
-          const lines = (leftOverText + chunk).split("\n\n");
-          leftOverText = lines.pop() || "";
+      for (let i = 0; i < participants.length; i++) {
+        const p = participants[i];
 
-          for (const line of lines) {
-            if (line.trim().startsWith("data: ")) {
-              try {
-                const eventData = JSON.parse(line.trim().substring(6));
+        try {
+          const response = await fetch("/api/send-single", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              subject: emailSubject,
+              body: emailBody,
+              isCertificateEnabled: isCertEnabled,
+              certificateImageUrl: certBase64,
+              certCoords,
+              recipient: p,
+              smtpConfig: {
+                host: smtpConfig?.host || "",
+                port: smtpConfig?.port || 587,
+                secure: smtpConfig?.secure || false,
+                user: smtpConfig?.user || "",
+                pass: smtpConfig?.pass || "",
+                fromName: smtpFromName,
+                fromEmail: smtpFromEmail
+              },
+            }),
+          });
 
-                // Process standard message indicators
-                if (eventData.status === "initializing" || eventData.status === "sandbox-mode" || eventData.status === "smtp-verified" || eventData.status === "template-loaded") {
-                  setDispatchLogs((prev) => [
-                    {
-                      id: `sys_${Date.now()}_${Math.random()}`,
-                      name: "System Worker",
-                      email: "",
-                      status: "system",
-                      info: eventData.message || "",
-                    },
-                    ...prev,
-                  ]);
-                }
+          const result = await response.json();
 
-                // Process recipient status updates
-                if (eventData.recipientId) {
-                  const rStatus = eventData.status; // 'sent' or 'failed'
-                  const rInfo = eventData.message || "";
+          if (response.ok && result.status === "sent") {
+            currentSent++;
+            setDispatchProgress({
+              sent: currentSent,
+              failed: currentFailed,
+              total: participants.length,
+            });
 
-                  // Tally stats local
-                  if (rStatus === "sent") {
-                    currentSent++;
-                  } else {
-                    currentFailed++;
-                  }
+            setDispatchLogs((prev) => [
+              {
+                id: p.id,
+                name: p.name,
+                email: p.email,
+                status: "sent",
+                info: result.message || "Dispatched successfully.",
+              },
+              ...prev,
+            ]);
 
-                  setDispatchProgress({
-                    sent: currentSent,
-                    failed: currentFailed,
-                    total: participants.length,
-                  });
+            // Live-sync progress updates in Firestore
+            const rDocRef = doc(db, "campaigns", campaignId, "recipients", p.id);
+            await updateDoc(rDocRef, {
+              status: "sent",
+              sentAt: new Date().toISOString(),
+            });
 
-                  // Add recipient to dispatch list
-                  const matchingRecip = participants.find((p) => p.id === eventData.recipientId);
-                  if (matchingRecip) {
-                    setDispatchLogs((prev) => [
-                      {
-                        id: eventData.recipientId,
-                        name: matchingRecip.name,
-                        email: matchingRecip.email,
-                        status: rStatus,
-                        info: rInfo,
-                      },
-                      ...prev,
-                    ]);
-                  }
+            // Increment Campaign aggregated numbers inside Firestore
+            await updateDoc(campaignDocRef, {
+              sentCount: increment(1),
+            });
+          } else {
+            const errDetail = result.error || "Mailing handler failed to dispatch.";
+            currentFailed++;
+            setDispatchProgress({
+              sent: currentSent,
+              failed: currentFailed,
+              total: participants.length,
+            });
 
-                  // Live-sync progress updates in Firestore
-                  const rDocRef = doc(db, "campaigns", campaignId, "recipients", eventData.recipientId);
-                  const updatePayload: Partial<Recipient> = {
-                    status: rStatus,
-                    sentAt: new Date().toISOString(),
-                  };
-                  if (rStatus === "failed") {
-                    updatePayload.error = rInfo;
-                  }
-                  await updateDoc(rDocRef, updatePayload);
+            setDispatchLogs((prev) => [
+              {
+                id: p.id,
+                name: p.name,
+                email: p.email,
+                status: "failed",
+                info: errDetail,
+              },
+              ...prev,
+            ]);
 
-                  // Increment Campaign aggregated numbers inside Firestore
-                  await updateDoc(campaignDocRef, {
-                    sentCount: increment(rStatus === "sent" ? 1 : 0),
-                    failedCount: increment(rStatus === "failed" ? 1 : 0),
-                  });
-                }
+            const rDocRef = doc(db, "campaigns", campaignId, "recipients", p.id);
+            await updateDoc(rDocRef, {
+              status: "failed",
+              sentAt: new Date().toISOString(),
+              error: errDetail,
+            });
 
-                if (eventData.status === "completed") {
-                  await updateDoc(campaignDocRef, {
-                    status: "completed",
-                  });
-                  campaignTerminalStateSet = true;
-                }
-                
-                if (eventData.error) {
-                  setDispatchLogs((prev) => [
-                    {
-                      id: `err_${Date.now()}`,
-                      name: "Campaign Dispatch Aborted",
-                      email: "",
-                      status: "failed",
-                      info: eventData.error,
-                    },
-                    ...prev,
-                  ]);
-                  await updateDoc(campaignDocRef, {
-                    status: "failed",
-                  });
-                  campaignTerminalStateSet = true;
-                }
-              } catch (e) {
-                console.warn("Failed processing streamed SSE token line:", e);
-              }
-            }
+            await updateDoc(campaignDocRef, {
+              failedCount: increment(1),
+            });
           }
+        } catch (individualErr: any) {
+          const errDetail = individualErr.message || "Network exception during processing.";
+          currentFailed++;
+          setDispatchProgress({
+            sent: currentSent,
+            failed: currentFailed,
+            total: participants.length,
+          });
+
+          setDispatchLogs((prev) => [
+            {
+              id: p.id,
+              name: p.name,
+              email: p.email,
+              status: "failed",
+              info: errDetail,
+            },
+            ...prev,
+          ]);
+
+          const rDocRef = doc(db, "campaigns", campaignId, "recipients", p.id);
+          await updateDoc(rDocRef, {
+            status: "failed",
+            sentAt: new Date().toISOString(),
+            error: errDetail,
+          });
+
+          await updateDoc(campaignDocRef, {
+            failedCount: increment(1),
+          });
         }
       }
+
+      // Mark total campaign run as completed successfully
+      await updateDoc(campaignDocRef, {
+        status: "completed",
+      });
+      campaignTerminalStateSet = true;
+
+      setDispatchLogs((prev) => [
+        {
+          id: `sys_comp_${Date.now()}`,
+          name: "System Worker",
+          email: "",
+          status: "system",
+          info: "Bulk send campaign finished successfully.",
+        },
+        ...prev,
+      ]);
 
       if (!campaignTerminalStateSet) {
         await updateDoc(campaignDocRef, {
@@ -484,7 +494,7 @@ export default function App() {
           <div className="w-10 h-10 rounded-full border-2 border-purple-950 border-t-2 border-t-purple-500 animate-spin"></div>
           <div className="text-center space-y-1">
             <p className="text-xs font-bold text-purple-400 tracking-widest uppercase animate-pulse">Initializing Dispatch Environment</p>
-            <p className="text-[10px] text-white font-mono">Loading secure Firebase connection...</p>
+            <p className="text-[10px] text-white font-mono">Loading secure Certifly connection...</p>
           </div>
         </div>
       </div>
@@ -522,7 +532,7 @@ export default function App() {
           </button>
 
           <p className="text-[10px] text-white font-mono uppercase tracking-wider opacity-60">
-            Powered by Firebase Auth &amp; Google Cloud
+            Certifly Enterprise Credential System
           </p>
         </div>
       </div>
@@ -954,7 +964,7 @@ export default function App() {
                           Upload background certificate layouts and define where coordinates should overlap.
                         </p>
                       </div>
-                      <CertDesigner isEnabled={isCertEnabled} onCoordsChanged={handleCoordsChanged} />
+                      <CertDesigner isEnabled={isCertEnabled} onCoordsChanged={handleCoordsChanged} sampleName={participants[0]?.name} />
                     </div>
                   )}
 

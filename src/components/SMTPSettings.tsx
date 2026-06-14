@@ -140,7 +140,7 @@ export default function SMTPSettings({ currentUser, onConfigChange }: SMTPSettin
           <div className="space-y-1">
             <p className="font-extrabold text-white text-xs">High-Fidelity Sandbox Mode is Active</p>
             <p className="text-white/90 leading-relaxed text-[11px]">
-              No SMTP credentials required! You can draft templates, visually place coordinate placeholders on certificates, and launch bulk campaigns. The background pipeline renders authentic certificates, processes your participant lists, and provides live delivery progress directly inside your private Firebase console.
+              No SMTP credentials required! You can draft templates, visually place coordinate placeholders on certificates, and launch bulk campaigns. The background pipeline renders authentic certificates, processes your participant lists, and provides live delivery progress directly inside your campaign logs.
             </p>
           </div>
         </div>
