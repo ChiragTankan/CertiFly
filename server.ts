@@ -106,10 +106,22 @@ function applyCustomColor(
     const fontToLoad = jimpFonts[key] || jimpFonts.SANS_32_BLACK;
 
     try {
+      // First attempt: try loading from local bundle files (best for local/offline dev)
       return await loadFont(fontToLoad);
-    } catch (e) {
-      console.error("Font loading error: ", e);
-      return await loadFont(jimpFonts.SANS_32_BLACK);
+    } catch (e: any) {
+      console.warn(`Local font loading failed (${e.message || e}), attempting Vercel-optimized CDN fallback...`);
+      const cdnUrl = `https://unpkg.com/@jimp/plugin-print/fonts/open-sans/open-sans-${size}-${fontColor}/open-sans-${size}-${fontColor}.fnt`;
+      try {
+        return await loadFont(cdnUrl);
+      } catch (cdnErr: any) {
+        console.error(`Font CDN loading failed for size ${size} ${fontColor}:`, cdnErr.message || cdnErr);
+        // Secondary fallback to reliable 32px black font over CDN
+        try {
+          return await loadFont("https://unpkg.com/@jimp/plugin-print/fonts/open-sans/open-sans-32-black/open-sans-32-black.fnt");
+        } catch (finalErr: any) {
+          throw new Error("Unable to locate certificate fonts either locally or over secure CDN fallbacks: " + finalErr.message);
+        }
+      }
     }
   }
 
