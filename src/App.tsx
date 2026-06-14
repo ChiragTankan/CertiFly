@@ -23,6 +23,7 @@ import { Campaign, Recipient, SMTPConfig } from "./types";
 import CSVParser from "./components/CSVParser";
 import CertDesigner from "./components/CertDesigner";
 import CampaignList from "./components/CampaignList";
+import SMTPSettings from "./components/SMTPSettings";
 
 // Beautiful design systems icons
 import {
@@ -328,11 +329,12 @@ export default function App() {
               smtpConfig: {
                 host: smtpConfig?.host || "",
                 port: smtpConfig?.port || 587,
-                secure: smtpConfig?.secure || false,
+                secure: smtpConfig?.secure !== undefined ? smtpConfig.secure : false,
                 user: smtpConfig?.user || "",
                 pass: smtpConfig?.pass || "",
-                fromName: smtpFromName,
-                fromEmail: smtpFromEmail
+                fromName: smtpConfig?.fromName || smtpFromName,
+                fromEmail: smtpConfig?.fromEmail || smtpFromEmail,
+                useRealSMTP: smtpConfig?.useRealSMTP || false
               },
             }),
           });
@@ -1019,6 +1021,8 @@ export default function App() {
                     
                     {/* Left subcolumn: lists review */}
                     <div className="md:col-span-7 space-y-6">
+                      <SMTPSettings currentUser={currentUser} onConfigChange={(cfg) => setSmtpConfig(cfg)} />
+
                       <div className="bg-zinc-950/80 border border-purple-900/30 rounded-2xl p-5 shadow-xl space-y-5 backdrop-blur-xs">
                         <div className="flex items-center justify-between">
                           <h3 className="text-xs font-bold text-slate-350 tracking-wider uppercase flex items-center gap-2">

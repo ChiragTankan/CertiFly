@@ -160,6 +160,7 @@ function applyCustomColor(
       let isSandbox = true;
 
       // Extract SMTP details from either manual override or server-side environment variables
+      const useRealSMTP = smtpConfig?.useRealSMTP !== undefined ? smtpConfig.useRealSMTP : (process.env.SMTP_HOST ? true : false);
       const smtpHost = smtpConfig?.host || process.env.SMTP_HOST;
       const smtpPort = Number(smtpConfig?.port || process.env.SMTP_PORT) || 587;
       const smtpSecure = smtpConfig?.secure !== undefined ? smtpConfig.secure : (process.env.SMTP_SECURE === "true" || smtpPort === 465);
@@ -168,7 +169,7 @@ function applyCustomColor(
       const smtpFromName = smtpConfig?.fromName || process.env.SMTP_FROM_NAME || "Event Organizer";
       const smtpFromEmail = smtpConfig?.fromEmail || process.env.SMTP_FROM_EMAIL || smtpUser;
 
-      if (smtpHost && smtpUser && smtpPass) {
+      if (useRealSMTP && smtpHost && smtpUser && smtpPass) {
         isSandbox = false;
         try {
           transporter = nodemailer.createTransport({
@@ -362,6 +363,7 @@ function applyCustomColor(
       let transporter: nodemailer.Transporter | null = null;
       let isSandbox = true;
 
+      const useRealSMTP = smtpConfig?.useRealSMTP !== undefined ? smtpConfig.useRealSMTP : (process.env.SMTP_HOST ? true : false);
       const smtpHost = smtpConfig?.host || process.env.SMTP_HOST;
       const smtpPort = Number(smtpConfig?.port || process.env.SMTP_PORT) || 587;
       const smtpSecure = smtpConfig?.secure !== undefined ? smtpConfig.secure : (process.env.SMTP_SECURE === "true" || smtpPort === 465);
@@ -370,7 +372,7 @@ function applyCustomColor(
       const smtpFromName = smtpConfig?.fromName || process.env.SMTP_FROM_NAME || "Event Organizer";
       const smtpFromEmail = smtpConfig?.fromEmail || process.env.SMTP_FROM_EMAIL || smtpUser;
 
-      if (smtpHost && smtpUser && smtpPass) {
+      if (useRealSMTP && smtpHost && smtpUser && smtpPass) {
         isSandbox = false;
         try {
           transporter = nodemailer.createTransport({
